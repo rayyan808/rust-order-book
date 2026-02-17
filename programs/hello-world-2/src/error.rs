@@ -4,4 +4,7 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Amount supplied was invalid")]
     InvalidAmount,
+
+    #[msg("Insufficient Maker Balance")]
+    InsufficientMakerBalance,
 }

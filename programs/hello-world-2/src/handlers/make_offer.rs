@@ -13,7 +13,6 @@ use anchor_spl::{
  * code in Anchor that does the validation for us, reducing our boilerplate
  */
 #[derive(Accounts)] //We want to use Accounts from Anchor to help validate inputs
-#[instruction(id: u64)]
 pub struct MakeOffer<'info> {
     //Used to find/create token accounts based off (wallet, token)
     associated_token_program: Program<'info, AssociatedToken>,
@@ -72,12 +71,23 @@ pub struct MakeOffer<'info> {
 
 pub fn make_offer(
   ctx: Context<MakeOffer>,
+  order_id: u64,
   token_a_out_amount: u64,
   min_token_b_in_amount: u64
-) -> Result<()> {
+) -> Result<()>{
   require!(token_a_out_amount > 0, ErrorCode::InvalidAmount);
   require!(min_token_b_in_amount > 0, ErrorCode::InvalidAmount);
 
-  transfer_tokens(&ctx.accounts.maker_token_a_account, &ctx.accounts.vault_token_a_account, &token_a_out_amount, &ctx.accounts.token_program, &ctx.accounts.token_mint_a, &ctx.accounts.maker)?;
+  transfer_tokens(&ctx.accounts.maker_token_a_account, &ctx.accounts.vault_token_a_account, &token_a_out_amount, &ctx.accounts.token_program, &ctx.accounts.token_mint_a, &ctx.accounts.maker).map_err(|_e| ErrorCode::InsufficientMakerBalance)?;
+
+  //Store Offer on-chain
+  ctx.accounts.offer.set_inner(Offer { 
+    id: order_id,
+    maker: ctx.accounts.maker.key(), 
+    token_out: ctx.accounts.token_mint_a.key(), 
+    token_in: ctx.accounts.token_mint_b.key(), 
+    amount_out: token_a_out_amount, 
+    min_amount_in: min_token_b_in_amount, 
+    bump: ctx.bumps.offer });
   Ok(())
 }
